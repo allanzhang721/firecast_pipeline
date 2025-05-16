@@ -1,4 +1,4 @@
-# 🔥 firecast_pipeline – Function Reference
+# 🔥 firecast_pipeline – Updated Function Reference
 
 ---
 
@@ -37,55 +37,21 @@ Apply log transformation and MinMax scaling to fire data.
 
 ---
 
-## `train_ols_for_fire`
+## `train_model_for_fire`
 
 ```python
-train_ols_for_fire(X, y)
+train_model_for_fire(X, y, model_name)
 ```
 
-Train an Ordinary Least Squares regression model.
+Train a regression model for fire data using the specified model type.
+
+**Parameters**:
+- `X` (`pd.DataFrame`) — Input features.
+- `y` (`pd.Series`) — Target variable.
+- `model_name` (`str`) — One of `ols`, `lasso`, `mlp`, `xgboost`.
 
 **Returns**:
-- Fitted `statsmodels.OLS` model.
-
----
-
-## `train_lasso_for_fire`
-
-```python
-train_lasso_for_fire(X, y)
-```
-
-Train a Lasso regression model with L1 regularization.
-
-**Returns**:
-- Fitted `sklearn.linear_model.Lasso` model.
-
----
-
-## `train_mlp_for_fire`
-
-```python
-train_mlp_for_fire(X, y)
-```
-
-Train a multi-layer perceptron for fire regression.
-
-**Returns**:
-- Fitted `sklearn.neural_network.MLPRegressor` model.
-
----
-
-## `train_xgboost_for_fire`
-
-```python
-train_xgboost_for_fire(X, y)
-```
-
-Train an XGBoost regressor for fire data.
-
-**Returns**:
-- Fitted `xgboost.XGBRegressor` model.
+- Fitted model instance.
 
 ---
 
@@ -109,23 +75,6 @@ A 1D CNN model for regression tasks.
 
 ---
 
-## `train_fire_model`
-
-```python
-train_fire_model(model_name, data_path)
-```
-
-Train a model (OLS, Lasso, MLP, XGB, CNN) from Excel file.
-
-**Parameters**:
-- `model_name` (`str`) — One of `ols`, `lasso`, `mlp`, `xgboost`, `cnn`.
-- `data_path` (`str`) — Path to `.xlsx` training file.
-
-**Side Effects**:
-- Saves model and scalers to `best_cnn_model.joblib`.
-
----
-
 ## `train_optuna_cnn_for_fire`
 
 ```python
@@ -142,14 +91,15 @@ Train a CNN model with hyperparameter tuning using Optuna.
 ## `predict_fire_risk_from_model`
 
 ```python
-predict_fire_risk_from_model(model_path, input_path)
+predict_fire_risk_from_model(model_path, input_path, model_name)
 ```
 
-Predict fire risk values using a saved `.joblib` model.
+Predict fire risk values using a saved `.joblib` model and specified model type.
 
 **Parameters**:
 - `model_path` (`str`) — Path to trained model.
 - `input_path` (`str`) — Path to `.xlsx` file with test features.
+- `model_name` (`str`) — One of `ols`, `lasso`, `mlp`, `xgboost`, `cnn`.
 
 **Returns**:
 - `np.ndarray` — Predictions in original units (after inverse transform).
