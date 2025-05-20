@@ -12,22 +12,23 @@ from .models import (
 )
 
 from .cnn_module import CNNModel
-from .data_utils import (load_fire_data_from_excel as load_excel_data,
-                          log_minmax_scale_fire_data as log_scale_transform
+from .data_utils import (
+    load_fire_data_from_excel as load_excel_data,
+    log_minmax_scale_fire_data as log_scale_transform
 )
 
-
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error
+import statsmodels.api as sm
 import joblib
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import optuna
-
-from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error
 import pandas as pd
 import numpy as np
 import os
+
 
 def train_fire_model(model_name, data_path):
     X, y = load_excel_data(data_path)
@@ -36,8 +37,7 @@ def train_fire_model(model_name, data_path):
 
     if model_name == "cnn":
         model, metrics = train_optuna_cnn_for_fire(X_train_scaled, y_train_scaled, X_test_scaled, y_test_scaled)
-        
-        # Save best CNN model
+
         joblib.dump({
             "model": model,
             "scaler_X": scaler_X,
@@ -45,30 +45,43 @@ def train_fire_model(model_name, data_path):
             "feature_names": X.columns.tolist()
         }, os.path.join("examples", "best_cnn_model.joblib"))
 
-        # Print metrics
-        print("\n🔥 CNN Model Evaluation:")
+        print(f"\n🔥 CNN Model Evaluation:")
         for k, v in metrics.items():
             print(f"{k}: {v:.4f}")
+
     else:
-        # Non-CNN models
+        # Train traditional models
         if model_name == "ols":
             model = train_ols(X_train_scaled, y_train_scaled)
-        elif model_name == "lasso":
-            model = train_lasso(X_train_scaled, y_train_scaled)
-        elif model_name == "mlp":
-            model = train_mlp(X_train_scaled, y_train_scaled)
-        elif model_name == "xgboost":
-            model = train_xgb(X_train_scaled, y_train_scaled)
+            X_test_eval = sm.add_constant(X_test_scaled, has_constant="add")
         else:
-            raise ValueError("Unsupported model name")
+            if model_name == "lasso":
+                model = train_lasso(X_train_scaled, y_train_scaled)
+            elif model_name == "mlp":
+                model = train_mlp(X_train_scaled, y_train_scaled)
+            elif model_name == "xgboost":
+                model = train_xgb(X_train_scaled, y_train_scaled)
+            else:
+                raise ValueError("Unsupported model name")
+            X_test_eval = X_test_scaled
 
-        # Save model
+        y_pred = model.predict(X_test_eval)
+        metrics = {
+            "R²": r2_score(y_test_scaled, y_pred),
+            "MAE": mean_absolute_error(y_test_scaled, y_pred),
+            "MSE": mean_squared_error(y_test_scaled, y_pred)
+        }
+
         joblib.dump({
             "model": model,
             "scaler_X": scaler_X,
             "scaler_y": scaler_y,
             "feature_names": X.columns.tolist()
-        }, f"{model_name}_model.joblib")
+        }, os.path.join("examples", f"best_{model_name}_model.joblib"))
+
+        print(f"\n🔥 Model '{model_name}' Evaluation:")
+        for k, v in metrics.items():
+            print(f"{k}: {v:.4f}")
 
 
 def train_optuna_cnn_for_fire(X_train, y_train, X_test, y_test):
@@ -86,12 +99,14 @@ def train_optuna_cnn_for_fire(X_train, y_train, X_test, y_test):
         lr = trial.suggest_float("lr", 1e-4, 1e-2, log=True)
         optimizer = optim.Adam(model.parameters(), lr=lr)
         criterion = nn.MSELoss()
+
         for _ in range(100):
             model.train()
             optimizer.zero_grad()
             loss = criterion(model(X_train_tensor), y_train_tensor)
             loss.backward()
             optimizer.step()
+
         model.eval()
         with torch.no_grad():
             pred = model(X_test_tensor).detach().numpy()
@@ -104,6 +119,7 @@ def train_optuna_cnn_for_fire(X_train, y_train, X_test, y_test):
     best_model = CNNModel(best_params["num_filters1"], best_params["num_filters2"], best_params["fc1_size"])
     optimizer = optim.Adam(best_model.parameters(), lr=best_params["lr"])
     criterion = nn.MSELoss()
+
     for _ in range(100):
         best_model.train()
         optimizer.zero_grad()
@@ -111,12 +127,11 @@ def train_optuna_cnn_for_fire(X_train, y_train, X_test, y_test):
         loss.backward()
         optimizer.step()
 
-    # Evaluate metrics
     best_model.eval()
     with torch.no_grad():
         preds = best_model(X_test_tensor).detach().numpy()
-    y_true = y_test_tensor.numpy()
 
+    y_true = y_test_tensor.numpy()
     metrics = {
         "R²": r2_score(y_true, preds),
         "MAE": mean_absolute_error(y_true, preds),
@@ -124,6 +139,7 @@ def train_optuna_cnn_for_fire(X_train, y_train, X_test, y_test):
     }
 
     return best_model, metrics
+
 
 if __name__ == "__main__":
     import argparse
