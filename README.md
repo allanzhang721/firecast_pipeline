@@ -38,7 +38,9 @@ Install all required dependencies:
 ```bash
 pip install pandas numpy scikit-learn statsmodels xgboost torch optuna openpyxl
 pip install streamlit plotly
-python train_predict_pipeline.py --data_path example_data_train.xlsx
-python train_predict_pipeline.py --data_path example_data_train.xlsx --model cnn
-python train_predict_pipeline.py --predict_path example_data_test.xlsx --model_path best_cnn_model.joblib
-python run_visualize.py
+python -m regressorpipeline.train --model_name cnn --data_path examples/example_data_train.xlsx
+python -m regressorpipeline.predict --predict_path examples/example_data_test.xlsx --model_path examples/best_cnn_model.joblib
+python -m regressorpipeline.predict --predict_path examples/example_data_test.xlsx --model_path examples/best_cnn_model.joblib --output_path example/predict_results.csv
+python -m regressorpipeline.visualize --feat1 ThermalInertia --feat2 FuelLoadDensity --model_path examples/best_cnn_model.joblib
+
+python -m regressorpipeline.visualize --feat1 ThermalInertia --feat2 FuelLoadDensity --model_path examples/best_cnn_model.joblib --save_path examples/cnn_surface.html

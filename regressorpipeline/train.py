@@ -4,9 +4,19 @@ Functions:
 - train_optuna_cnn_for_fire(X_train, y_train, X_test, y_test): Train CNN with Optuna tuning for fire hazard regression.
 """
 
-from .models import train_ols, train_lasso, train_mlp, train_xgb
+from .models import (
+    train_ols_for_fire as train_ols,
+    train_lasso_for_fire as train_lasso,
+    train_mlp_for_fire as train_mlp,
+    train_xgboost_for_fire as train_xgb
+)
+
 from .cnn_module import CNNModel
-from .data_utils import load_excel_data, log_scale_transform
+from .data_utils import (load_fire_data_from_excel as load_excel_data,
+                          log_minmax_scale_fire_data as log_scale_transform
+)
+
+
 from sklearn.model_selection import train_test_split
 import joblib
 import torch
@@ -14,25 +24,52 @@ import torch.nn as nn
 import torch.optim as optim
 import optuna
 
+from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error
+import pandas as pd
+import numpy as np
+import os
+
 def train_fire_model(model_name, data_path):
     X, y = load_excel_data(data_path)
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
     X_train_scaled, X_test_scaled, y_train_scaled, y_test_scaled, scaler_X, scaler_y = log_scale_transform(X_train, X_test, y_train, y_test)
 
-    if model_name == "ols":
-        model = train_ols(X_train_scaled, y_train_scaled)
-    elif model_name == "lasso":
-        model = train_lasso(X_train_scaled, y_train_scaled)
-    elif model_name == "mlp":
-        model = train_mlp(X_train_scaled, y_train_scaled)
-    elif model_name == "xgboost":
-        model = train_xgb(X_train_scaled, y_train_scaled)
-    elif model_name == "cnn":
-        model = train_optuna_cnn_for_fire(X_train_scaled, y_train_scaled, X_test_scaled, y_test_scaled)
-    else:
-        raise ValueError("Unsupported model name")
+    if model_name == "cnn":
+        model, metrics = train_optuna_cnn_for_fire(X_train_scaled, y_train_scaled, X_test_scaled, y_test_scaled)
+        
+        # Save best CNN model
+        joblib.dump({
+            "model": model,
+            "scaler_X": scaler_X,
+            "scaler_y": scaler_y,
+            "feature_names": X.columns.tolist()
+        }, os.path.join("examples", "best_cnn_model.joblib"))
 
-    joblib.dump({"model": model, "scaler_X": scaler_X, "scaler_y": scaler_y}, f"{model_name}_model.joblib")
+        # Print metrics
+        print("\n🔥 CNN Model Evaluation:")
+        for k, v in metrics.items():
+            print(f"{k}: {v:.4f}")
+    else:
+        # Non-CNN models
+        if model_name == "ols":
+            model = train_ols(X_train_scaled, y_train_scaled)
+        elif model_name == "lasso":
+            model = train_lasso(X_train_scaled, y_train_scaled)
+        elif model_name == "mlp":
+            model = train_mlp(X_train_scaled, y_train_scaled)
+        elif model_name == "xgboost":
+            model = train_xgb(X_train_scaled, y_train_scaled)
+        else:
+            raise ValueError("Unsupported model name")
+
+        # Save model
+        joblib.dump({
+            "model": model,
+            "scaler_X": scaler_X,
+            "scaler_y": scaler_y,
+            "feature_names": X.columns.tolist()
+        }, f"{model_name}_model.joblib")
+
 
 def train_optuna_cnn_for_fire(X_train, y_train, X_test, y_test):
     X_train_tensor = torch.tensor(X_train, dtype=torch.float32).unsqueeze(1)
@@ -58,10 +95,11 @@ def train_optuna_cnn_for_fire(X_train, y_train, X_test, y_test):
         model.eval()
         with torch.no_grad():
             pred = model(X_test_tensor).detach().numpy()
-        return -((y_test_tensor.numpy() - pred) ** 2).mean()
+        return -r2_score(y_test_tensor.numpy(), pred)
 
     study = optuna.create_study(direction="minimize")
     study.optimize(objective, n_trials=10)
+
     best_params = study.best_params
     best_model = CNNModel(best_params["num_filters1"], best_params["num_filters2"], best_params["fc1_size"])
     optimizer = optim.Adam(best_model.parameters(), lr=best_params["lr"])
@@ -72,4 +110,27 @@ def train_optuna_cnn_for_fire(X_train, y_train, X_test, y_test):
         loss = criterion(best_model(X_train_tensor), y_train_tensor)
         loss.backward()
         optimizer.step()
-    return best_model
+
+    # Evaluate metrics
+    best_model.eval()
+    with torch.no_grad():
+        preds = best_model(X_test_tensor).detach().numpy()
+    y_true = y_test_tensor.numpy()
+
+    metrics = {
+        "R²": r2_score(y_true, preds),
+        "MAE": mean_absolute_error(y_true, preds),
+        "MSE": mean_squared_error(y_true, preds)
+    }
+
+    return best_model, metrics
+
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Train fire risk regression model.")
+    parser.add_argument("--model_name", required=True, help="Model to train: ols, lasso, mlp, xgboost, cnn")
+    parser.add_argument("--data_path", required=True, help="Path to training Excel file")
+    args = parser.parse_args()
+
+    train_fire_model(args.model_name, args.data_path)
