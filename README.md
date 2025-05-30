@@ -60,21 +60,23 @@ python -m regressorpipeline.train --model_name mlp --data_path examples/example_
 python -m regressorpipeline.train --model_name xgboost --data_path examples/example_data_train.xlsx
 ```
 
-### Train multiple CNNs on several datasets
+Models are saved to the `examples/` folder as `best_<model_name>_model.joblib`.
+
+
+### Train a CNN Ensemble
+
+You can train the same dataset several times to build a more stable ensemble:
 
 ```python
 from regressorpipeline.train import train_multiple_cnn_for_fire
 
-models, metrics, avg_metrics = train_multiple_cnn_for_fire([
-    "data_series1.xlsx",
-    "data_series2.xlsx",
-])
+models, run_metrics, ensemble_metrics = train_multiple_cnn_for_fire(
+    "examples/example_data_train.xlsx", n_runs=3
+)
+print(ensemble_metrics)
 ```
 
-`metrics` contains evaluation metrics for each model, while `avg_metrics` holds their average values.
-
-
-Models are saved to the `examples/` folder as `best_<model_name>_model.joblib`.
+The trained ensemble is saved as `examples/cnn_ensemble.joblib`.
 
 ---
 
@@ -88,6 +90,18 @@ python -m regressorpipeline.predict \
   --model_path examples/best_cnn_model.joblib
 ```
 
+For an ensemble of CNN models, average predictions across multiple `.joblib`
+files:
+
+```python
+from regressorpipeline.predict import predict_fire_risk_from_multiple_models
+
+preds = predict_fire_risk_from_multiple_models(
+    ["examples/cnn_ensemble.joblib"],
+    "examples/example_data_test.xlsx",
+)
+print(preds)
+```
 To save predictions to CSV:
 
 ```bash

@@ -95,23 +95,27 @@ Train a CNN model using Optuna for hyperparameter tuning.
 ---
 
 
+
 ## `train_multiple_cnn_for_fire`
 
 ```python
-train_multiple_cnn_for_fire(data_paths)
+train_multiple_cnn_for_fire(data_path, n_runs=5)
 ```
 
-Train a CNN on each Excel dataset in `data_paths` and return average metrics.
+Train a CNN ensemble by running `n_runs` trainings on the same dataset and
+averaging the predictions.
 
 **Parameters**:
-- `data_paths` (`list[str]`) — Paths to individual time series Excel files.
+- `data_path` (`str`) — Path to the Excel dataset.
+- `n_runs` (`int`, optional) — Number of training runs.
 
 **Returns**:
 - `list` — Trained CNN models.
-- `list[dict]` — Metrics for each model.
-- `dict` — Average metrics across all trained CNNs.
+- `list[dict]` — Metrics for each run.
+- `dict` — Metrics computed from the averaged ensemble predictions.
 
 ---
+
 
 ## `predict_fire_risk_from_model`
 
@@ -134,17 +138,17 @@ Predict fire risk values using a saved `.joblib` model.
 ## `predict_fire_risk_from_multiple_models`
 
 ```python
-predict_fire_risk_from_multiple_models(model_paths, input_paths)
+predict_fire_risk_from_multiple_models(model_paths, input_path)
 ```
 
-Run prediction for several trained CNNs on their corresponding test sets.
+Predict using several saved models and return the average prediction.
 
 **Parameters**:
-- `model_paths` (`list[str]`) — Paths to saved model bundles.
-- `input_paths` (`list[str]`) — Paths to Excel files for prediction.
+- `model_paths` (`list[str]`) — Paths to multiple `.joblib` model bundles.
+- `input_path` (`str`) — Path to `.xlsx` file with test features.
 
 **Returns**:
-- `list[np.ndarray]` — Predictions from each model.
+- `np.ndarray` — Averaged predictions in original units.
 
 ---
 

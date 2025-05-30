@@ -5,31 +5,6 @@ import joblib
 import torch
 
 
-def predict_fire_risk_from_multiple_models(model_paths, input_paths):
-    """Predict fire risk values from multiple trained CNN models.
-
-    Parameters
-    ----------
-    model_paths : list of str
-        Paths to saved ``.joblib`` model bundles.
-    input_paths : list of str
-        Paths to ``.xlsx`` files containing input features.
-
-    Returns
-    -------
-    list
-        Array of predictions from each model/dataset pair.
-    """
-    if len(model_paths) != len(input_paths):
-        raise ValueError("model_paths and input_paths must have the same length")
-
-    all_preds = []
-    for m_path, i_path in zip(model_paths, input_paths):
-        preds = predict_fire_risk_from_model(m_path, i_path)
-        all_preds.append(preds)
-
-    return all_preds
-
 
 def predict_fire_risk_from_model(model_path, input_path):
     # Load model bundle
@@ -54,6 +29,58 @@ def predict_fire_risk_from_model(model_path, input_path):
     # Inverse transform
     preds = np.expm1(scaler_y.inverse_transform(preds.reshape(-1, 1))).ravel()
     return preds
+
+def predict_fire_risk_from_multiple_models(model_paths, input_path):
+    """Run prediction using several saved models and average the results.
+
+    Parameters
+    ----------
+    model_paths : list of str
+        Paths to `.joblib` model bundles.
+    input_path : str
+        Path to the Excel file containing samples to predict.
+
+    Returns
+    -------
+    np.ndarray
+        Averaged predictions from all provided models.
+    """
+
+    if not model_paths:
+        raise ValueError("model_paths list cannot be empty")
+
+    # Load input data once
+    df = pd.read_excel(input_path, engine="openpyxl")
+    X_num = np.log1p(df.select_dtypes(include=[np.number]))
+
+    preds_list = []
+
+    for p in model_paths:
+        bundle = joblib.load(p)
+        if "model" in bundle:
+            models = [bundle["model"]]
+        else:
+            models = bundle.get("models", [])
+        scaler_X = bundle["scaler_X"]
+        scaler_y = bundle["scaler_y"]
+
+        X_scaled = scaler_X.transform(X_num)
+
+        combined_pred = []
+        for m in models:
+            if isinstance(m, torch.nn.Module):
+                m.eval()
+                with torch.no_grad():
+                    pr = m(torch.tensor(X_scaled, dtype=torch.float32).unsqueeze(1)).numpy()
+            else:
+                pr = m.predict(X_scaled)
+            combined_pred.append(pr)
+
+        avg_pred = np.mean(np.stack(combined_pred, axis=0), axis=0)
+        avg_pred = np.expm1(scaler_y.inverse_transform(avg_pred.reshape(-1, 1))).ravel()
+        preds_list.append(avg_pred)
+
+    return np.mean(np.stack(preds_list, axis=0), axis=0)
 
 
 def main():
