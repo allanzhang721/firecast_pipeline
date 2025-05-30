@@ -94,6 +94,25 @@ Train a CNN model using Optuna for hyperparameter tuning.
 
 ---
 
+
+## `train_multiple_cnn_for_fire`
+
+```python
+train_multiple_cnn_for_fire(data_paths)
+```
+
+Train a CNN on each Excel dataset in `data_paths` and return average metrics.
+
+**Parameters**:
+- `data_paths` (`list[str]`) — Paths to individual time series Excel files.
+
+**Returns**:
+- `list` — Trained CNN models.
+- `list[dict]` — Metrics for each model.
+- `dict` — Average metrics across all trained CNNs.
+
+---
+
 ## `predict_fire_risk_from_model`
 
 ```python
@@ -108,6 +127,24 @@ Predict fire risk values using a saved `.joblib` model.
 
 **Returns**:
 - `np.ndarray` — Predictions in original units (after inverse log and scaling).
+
+---
+
+
+## `predict_fire_risk_from_multiple_models`
+
+```python
+predict_fire_risk_from_multiple_models(model_paths, input_paths)
+```
+
+Run prediction for several trained CNNs on their corresponding test sets.
+
+**Parameters**:
+- `model_paths` (`list[str]`) — Paths to saved model bundles.
+- `input_paths` (`list[str]`) — Paths to Excel files for prediction.
+
+**Returns**:
+- `list[np.ndarray]` — Predictions from each model.
 
 ---
 

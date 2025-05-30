@@ -4,6 +4,33 @@ import numpy as np
 import joblib
 import torch
 
+
+def predict_fire_risk_from_multiple_models(model_paths, input_paths):
+    """Predict fire risk values from multiple trained CNN models.
+
+    Parameters
+    ----------
+    model_paths : list of str
+        Paths to saved ``.joblib`` model bundles.
+    input_paths : list of str
+        Paths to ``.xlsx`` files containing input features.
+
+    Returns
+    -------
+    list
+        Array of predictions from each model/dataset pair.
+    """
+    if len(model_paths) != len(input_paths):
+        raise ValueError("model_paths and input_paths must have the same length")
+
+    all_preds = []
+    for m_path, i_path in zip(model_paths, input_paths):
+        preds = predict_fire_risk_from_model(m_path, i_path)
+        all_preds.append(preds)
+
+    return all_preds
+
+
 def predict_fire_risk_from_model(model_path, input_path):
     # Load model bundle
     model_bundle = joblib.load(model_path)

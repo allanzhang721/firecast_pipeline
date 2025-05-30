@@ -2,6 +2,7 @@
 Functions:
 - train_fire_model(model_name, data_path): Entry point to train a model (ols, lasso, mlp, xgboost, cnn) for fire prediction.
 - train_optuna_cnn_for_fire(X_train, y_train, X_test, y_test): Train CNN with Optuna tuning for fire hazard regression.
+- train_multiple_cnn_for_fire(data_paths): Train several CNNs for multiple time series and average their metrics.
 """
 
 from .models import (
@@ -139,6 +140,47 @@ def train_optuna_cnn_for_fire(X_train, y_train, X_test, y_test):
     }
 
     return best_model, metrics
+
+def train_multiple_cnn_for_fire(data_paths):
+    """Train several CNNs on multiple time series datasets.
+
+    Parameters
+    ----------
+    data_paths : list of str
+        List of Excel file paths, one for each time series dataset.
+
+    Returns
+    -------
+    list
+        Trained CNN models for each dataset.
+    list of dict
+        Metrics for every individual CNN.
+    dict
+        Average metrics across all CNNs.
+    """
+    models = []
+    metrics_list = []
+
+    for path in data_paths:
+        X, y = load_excel_data(path)
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=0.3, random_state=42
+        )
+        X_tr_scaled, X_te_scaled, y_tr_scaled, y_te_scaled, _, _ = log_scale_transform(
+            X_train, X_test, y_train, y_test
+        )
+
+        model, metrics = train_optuna_cnn_for_fire(
+            X_tr_scaled, y_tr_scaled, X_te_scaled, y_te_scaled
+        )
+        models.append(model)
+        metrics_list.append(metrics)
+
+    avg_metrics = {
+        k: float(np.mean([m[k] for m in metrics_list])) for k in metrics_list[0]
+    }
+
+    return models, metrics_list, avg_metrics
 
 
 if __name__ == "__main__":
