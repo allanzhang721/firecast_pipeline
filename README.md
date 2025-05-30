@@ -111,23 +111,6 @@ python -m regressorpipeline.predict \
   --output_path examples/predict_results.csv
 ```
 
-
-### Predict using multiple models
-
-```python
-from regressorpipeline.predict import predict_fire_risk_from_multiple_models
-
-pred_lists = predict_fire_risk_from_multiple_models([
-    "model1.joblib",
-    "model2.joblib",
-], [
-    "test_data1.xlsx",
-    "test_data2.xlsx",
-])
-```
-
-`pred_lists` is a list containing predictions from each model.
-
 ---
 
 ## 📊 Visualization (CNN only)
