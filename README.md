@@ -60,6 +60,20 @@ python -m regressorpipeline.train --model_name mlp --data_path examples/example_
 python -m regressorpipeline.train --model_name xgboost --data_path examples/example_data_train.xlsx
 ```
 
+### Train multiple CNNs on several datasets
+
+```python
+from regressorpipeline.train import train_multiple_cnn_for_fire
+
+models, metrics, avg_metrics = train_multiple_cnn_for_fire([
+    "data_series1.xlsx",
+    "data_series2.xlsx",
+])
+```
+
+`metrics` contains evaluation metrics for each model, while `avg_metrics` holds their average values.
+
+
 Models are saved to the `examples/` folder as `best_<model_name>_model.joblib`.
 
 ---
@@ -82,6 +96,23 @@ python -m regressorpipeline.predict \
   --model_path examples/best_cnn_model.joblib \
   --output_path examples/predict_results.csv
 ```
+
+
+### Predict using multiple models
+
+```python
+from regressorpipeline.predict import predict_fire_risk_from_multiple_models
+
+pred_lists = predict_fire_risk_from_multiple_models([
+    "model1.joblib",
+    "model2.joblib",
+], [
+    "test_data1.xlsx",
+    "test_data2.xlsx",
+])
+```
+
+`pred_lists` is a list containing predictions from each model.
 
 ---
 
