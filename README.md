@@ -72,12 +72,12 @@ You can train the same dataset multiple times to build a more stable ensemble:
 from regressorpipeline.train import train_multiple_cnn_for_fire
 
 models, run_metrics, ensemble_metrics = train_multiple_cnn_for_fire(
-    "examples/example_data_train.xlsx", n_runs=3
+    "examples/example_data_train.xlsx", n_runs=3, save_path="examples/my_cnn_ensemble.joblib"
 )
 print(ensemble_metrics)
 ```
 
-The ensemble is saved as `examples/cnn_ensemble.joblib`.
+The ensemble is saved as `examples/my_cnn_ensemble.joblib`.
 
 ---
 
@@ -109,7 +109,7 @@ preds = predict_fire_risk(models[0], scaler_X, scaler_y, "examples/example_data_
 ```python
 from regressorpipeline.predict import load_model_bundle, predict_fire_risk_from_models
 
-models, scaler_X, scaler_y = load_model_bundle("examples/cnn_ensemble.joblib")
+models, scaler_X, scaler_y = load_model_bundle("examples/my_cnn_ensemble.joblib")
 avg_preds = predict_fire_risk_from_models(models, scaler_X, scaler_y, "examples/example_data_test.xlsx")
 ```
 

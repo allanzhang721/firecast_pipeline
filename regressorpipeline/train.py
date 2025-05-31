@@ -2,7 +2,7 @@
 Functions:
 - train_fire_model(model_name, data_path, save=True): Entry point to train a model and optionally save it.
 - train_optuna_cnn_for_fire(X_train, y_train, X_test, y_test): Train CNN with Optuna tuning for fire hazard regression.
-- train_multiple_cnn_for_fire(data_path, n_runs=5): Train the same dataset several times and average the ensemble results.
+- train_multiple_cnn_for_fire(data_path, n_runs=5, save_path=None): Train same dataset multiple times and average ensemble results.
 """
 
 from .models import (
@@ -61,7 +61,6 @@ def train_fire_model(model_name, data_path, save=True):
             "MSE": mean_squared_error(y_test_scaled, y_pred)
         }
 
-    # Save model bundle
     if save:
         os.makedirs("examples", exist_ok=True)
         joblib.dump({
@@ -71,7 +70,6 @@ def train_fire_model(model_name, data_path, save=True):
             "feature_names": X.columns.tolist()
         }, os.path.join("examples", f"best_{model_name}_model.joblib"))
 
-    # Print metrics
     print(f"\n🔥 Model '{model_name}' Evaluation:")
     for k, v in metrics.items():
         print(f"{k}: {v:.4f}")
@@ -136,7 +134,7 @@ def train_optuna_cnn_for_fire(X_train, y_train, X_test, y_test):
     return best_model, metrics
 
 
-def train_multiple_cnn_for_fire(data_path, n_runs=5):
+def train_multiple_cnn_for_fire(data_path, n_runs=5, save_path="examples/cnn_ensemble.joblib"):
     X, y = load_excel_data(data_path)
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.3, random_state=42
@@ -168,16 +166,17 @@ def train_multiple_cnn_for_fire(data_path, n_runs=5):
         "MSE": mean_squared_error(y_te_scaled, ensemble_preds),
     }
 
-    os.makedirs("examples", exist_ok=True)
-    joblib.dump(
-        {
-            "models": models,
-            "scaler_X": scaler_X,
-            "scaler_y": scaler_y,
-            "feature_names": X.columns.tolist(),
-        },
-        os.path.join("examples", "cnn_ensemble.joblib"),
-    )
+    if save_path:
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+        joblib.dump(
+            {
+                "models": models,
+                "scaler_X": scaler_X,
+                "scaler_y": scaler_y,
+                "feature_names": X.columns.tolist(),
+            },
+            save_path,
+        )
 
     return models, metrics_list, ensemble_metrics
 
