@@ -5,20 +5,26 @@ import joblib
 import torch
 
 
+def predict_fire_risk(model, scaler_X, scaler_y, input_path):
+    """
+    Predict fire risk from a single model and scaler set.
 
-def predict_fire_risk_from_model(model_path, input_path):
-    # Load model bundle
-    model_bundle = joblib.load(model_path)
-    model = model_bundle["model"]
-    scaler_X = model_bundle["scaler_X"]
-    scaler_y = model_bundle["scaler_y"]
+    Parameters
+    ----------
+    model : trained model (sklearn or torch)
+    scaler_X : fitted sklearn scaler
+    scaler_y : fitted sklearn scaler
+    input_path : str
+        Path to input Excel file
 
-    # Load test features from Excel
+    Returns
+    -------
+    np.ndarray : Predicted values in original scale
+    """
     df = pd.read_excel(input_path, engine="openpyxl")
-    X = np.log1p(df.select_dtypes(include=[np.number]))  # Apply log1p transform
+    X = np.log1p(df.select_dtypes(include=[np.number]))
     X_scaled = scaler_X.transform(X)
 
-    # Predict
     if isinstance(model, torch.nn.Module):
         model.eval()
         with torch.no_grad():
@@ -26,61 +32,54 @@ def predict_fire_risk_from_model(model_path, input_path):
     else:
         preds = model.predict(X_scaled)
 
-    # Inverse transform
     preds = np.expm1(scaler_y.inverse_transform(preds.reshape(-1, 1))).ravel()
     return preds
 
-def predict_fire_risk_from_multiple_models(model_paths, input_path):
-    """Run prediction using several saved models and average the results.
+
+def predict_fire_risk_from_models(models, scaler_X, scaler_y, input_path):
+    """
+    Predict using multiple models and average their results.
 
     Parameters
     ----------
-    model_paths : list of str
-        Paths to `.joblib` model bundles.
+    models : list
+        List of trained models (torch or sklearn)
+    scaler_X : fitted sklearn scaler
+    scaler_y : fitted sklearn scaler
     input_path : str
-        Path to the Excel file containing samples to predict.
+        Path to input Excel file
 
     Returns
     -------
-    np.ndarray
-        Averaged predictions from all provided models.
+    np.ndarray : Averaged predictions
     """
-
-    if not model_paths:
-        raise ValueError("model_paths list cannot be empty")
-
-    # Load input data once
     df = pd.read_excel(input_path, engine="openpyxl")
-    X_num = np.log1p(df.select_dtypes(include=[np.number]))
+    X = np.log1p(df.select_dtypes(include=[np.number]))
+    X_scaled = scaler_X.transform(X)
 
     preds_list = []
 
-    for p in model_paths:
-        bundle = joblib.load(p)
-        if "model" in bundle:
-            models = [bundle["model"]]
+    for m in models:
+        if isinstance(m, torch.nn.Module):
+            m.eval()
+            with torch.no_grad():
+                pred = m(torch.tensor(X_scaled, dtype=torch.float32).unsqueeze(1)).numpy()
         else:
-            models = bundle.get("models", [])
-        scaler_X = bundle["scaler_X"]
-        scaler_y = bundle["scaler_y"]
+            pred = m.predict(X_scaled)
+        preds_list.append(pred)
 
-        X_scaled = scaler_X.transform(X_num)
+    avg_pred = np.mean(np.stack(preds_list, axis=0), axis=0)
+    avg_pred = np.expm1(scaler_y.inverse_transform(avg_pred.reshape(-1, 1))).ravel()
+    return avg_pred
 
-        combined_pred = []
-        for m in models:
-            if isinstance(m, torch.nn.Module):
-                m.eval()
-                with torch.no_grad():
-                    pr = m(torch.tensor(X_scaled, dtype=torch.float32).unsqueeze(1)).numpy()
-            else:
-                pr = m.predict(X_scaled)
-            combined_pred.append(pr)
 
-        avg_pred = np.mean(np.stack(combined_pred, axis=0), axis=0)
-        avg_pred = np.expm1(scaler_y.inverse_transform(avg_pred.reshape(-1, 1))).ravel()
-        preds_list.append(avg_pred)
-
-    return np.mean(np.stack(preds_list, axis=0), axis=0)
+def load_model_bundle(model_path):
+    """Utility to load model and scalers from .joblib file."""
+    bundle = joblib.load(model_path)
+    models = bundle.get("models") or [bundle["model"]]
+    scaler_X = bundle["scaler_X"]
+    scaler_y = bundle["scaler_y"]
+    return models, scaler_X, scaler_y
 
 
 def main():
@@ -90,13 +89,16 @@ def main():
     parser.add_argument("--output_path", default=None, help="Optional: path to save predictions as CSV")
     args = parser.parse_args()
 
-    # Run prediction
-    preds = predict_fire_risk_from_model(args.model_path, args.predict_path)
+    models, scaler_X, scaler_y = load_model_bundle(args.model_path)
+
+    if len(models) == 1:
+        preds = predict_fire_risk(models[0], scaler_X, scaler_y, args.predict_path)
+    else:
+        preds = predict_fire_risk_from_models(models, scaler_X, scaler_y, args.predict_path)
 
     print("\n🔥 Fire Risk Predictions:")
     print(preds)
 
-    # Optionally save results
     if args.output_path:
         df_out = pd.DataFrame({"Predicted Fire Risk": preds})
         df_out.to_csv(args.output_path, index=False)

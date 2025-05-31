@@ -1,8 +1,9 @@
 """
 Functions:
-- train_fire_model(model_name, data_path): Entry point to train a model (ols, lasso, mlp, xgboost, cnn) for fire prediction.
+- train_fire_model(model_name, data_path, save=True): Entry point to train a model and optionally save it.
 - train_optuna_cnn_for_fire(X_train, y_train, X_test, y_test): Train CNN with Optuna tuning for fire hazard regression.
-- train_multiple_cnn_for_fire(data_path, n_runs=5): Train the same dataset several times and average the ensemble results."""
+- train_multiple_cnn_for_fire(data_path, n_runs=5): Train the same dataset several times and average the ensemble results.
+"""
 
 from .models import (
     train_ols_for_fire as train_ols,
@@ -30,40 +31,28 @@ import numpy as np
 import os
 
 
-def train_fire_model(model_name, data_path):
+def train_fire_model(model_name, data_path, save=True):
     X, y = load_excel_data(data_path)
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
     X_train_scaled, X_test_scaled, y_train_scaled, y_test_scaled, scaler_X, scaler_y = log_scale_transform(X_train, X_test, y_train, y_test)
 
     if model_name == "cnn":
         model, metrics = train_optuna_cnn_for_fire(X_train_scaled, y_train_scaled, X_test_scaled, y_test_scaled)
-
-        joblib.dump({
-            "model": model,
-            "scaler_X": scaler_X,
-            "scaler_y": scaler_y,
-            "feature_names": X.columns.tolist()
-        }, os.path.join("examples", "best_cnn_model.joblib"))
-
-        print(f"\n🔥 CNN Model Evaluation:")
-        for k, v in metrics.items():
-            print(f"{k}: {v:.4f}")
-
     else:
-        # Train traditional models
         if model_name == "ols":
             model = train_ols(X_train_scaled, y_train_scaled)
             X_test_eval = sm.add_constant(X_test_scaled, has_constant="add")
-        else:
-            if model_name == "lasso":
-                model = train_lasso(X_train_scaled, y_train_scaled)
-            elif model_name == "mlp":
-                model = train_mlp(X_train_scaled, y_train_scaled)
-            elif model_name == "xgboost":
-                model = train_xgb(X_train_scaled, y_train_scaled)
-            else:
-                raise ValueError("Unsupported model name")
+        elif model_name == "lasso":
+            model = train_lasso(X_train_scaled, y_train_scaled)
             X_test_eval = X_test_scaled
+        elif model_name == "mlp":
+            model = train_mlp(X_train_scaled, y_train_scaled)
+            X_test_eval = X_test_scaled
+        elif model_name == "xgboost":
+            model = train_xgb(X_train_scaled, y_train_scaled)
+            X_test_eval = X_test_scaled
+        else:
+            raise ValueError("Unsupported model name")
 
         y_pred = model.predict(X_test_eval)
         metrics = {
@@ -72,6 +61,9 @@ def train_fire_model(model_name, data_path):
             "MSE": mean_squared_error(y_test_scaled, y_pred)
         }
 
+    # Save model bundle
+    if save:
+        os.makedirs("examples", exist_ok=True)
         joblib.dump({
             "model": model,
             "scaler_X": scaler_X,
@@ -79,9 +71,12 @@ def train_fire_model(model_name, data_path):
             "feature_names": X.columns.tolist()
         }, os.path.join("examples", f"best_{model_name}_model.joblib"))
 
-        print(f"\n🔥 Model '{model_name}' Evaluation:")
-        for k, v in metrics.items():
-            print(f"{k}: {v:.4f}")
+    # Print metrics
+    print(f"\n🔥 Model '{model_name}' Evaluation:")
+    for k, v in metrics.items():
+        print(f"{k}: {v:.4f}")
+
+    return model, metrics
 
 
 def train_optuna_cnn_for_fire(X_train, y_train, X_test, y_test):
@@ -140,26 +135,8 @@ def train_optuna_cnn_for_fire(X_train, y_train, X_test, y_test):
 
     return best_model, metrics
 
+
 def train_multiple_cnn_for_fire(data_path, n_runs=5):
-    """Train a CNN ensemble by repeatedly training on the same dataset.
-
-    Parameters
-    ----------
-    data_path : str
-        Path to an Excel file containing the training data.
-    n_runs : int, optional
-        Number of independent training runs. Default is 5.
-
-    Returns
-    -------
-    list
-        Trained CNN models for each run.
-    list of dict
-        Metrics for each individual CNN.
-    dict
-        Average metrics for the ensemble prediction.
-    """
-
     X, y = load_excel_data(data_path)
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.3, random_state=42
@@ -191,6 +168,7 @@ def train_multiple_cnn_for_fire(data_path, n_runs=5):
         "MSE": mean_squared_error(y_te_scaled, ensemble_preds),
     }
 
+    os.makedirs("examples", exist_ok=True)
     joblib.dump(
         {
             "models": models,
@@ -204,13 +182,13 @@ def train_multiple_cnn_for_fire(data_path, n_runs=5):
     return models, metrics_list, ensemble_metrics
 
 
-
 if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="Train fire risk regression model.")
     parser.add_argument("--model_name", required=True, help="Model to train: ols, lasso, mlp, xgboost, cnn")
     parser.add_argument("--data_path", required=True, help="Path to training Excel file")
+    parser.add_argument("--no_save", action="store_true", help="If set, do not save the trained model.")
     args = parser.parse_args()
 
-    train_fire_model(args.model_name, args.data_path)
+    train_fire_model(args.model_name, args.data_path, save=not args.no_save)
