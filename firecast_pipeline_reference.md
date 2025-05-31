@@ -106,7 +106,7 @@ Train a CNN ensemble by running `n_runs` trainings on the same dataset and avera
 ### Parameters:
 - `data_path` (`str`) — Path to the Excel dataset.
 - `n_runs` (`int`, optional) — Number of training runs.
-- `save` (`bool`, optional) — Whether to save the ensemble as examples/cnn_ensemble.joblib. Default is True.
+- `save` (`bool`, optional) — Whether to save the ensemble as cnn_ensemble.joblib in my current directory. Default is True.
 
 ### Returns:
 - `list` — Trained CNN models.

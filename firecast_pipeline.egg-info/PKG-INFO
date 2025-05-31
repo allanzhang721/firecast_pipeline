@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: firecast_pipeline
-Version: 0.1.3
+Version: 0.1.4
 Summary: Unified regression pipeline for fire risk prediction.
 Author: Allan Zhang
 Author-email: yaoyu.zhang@mail.utoronto.ca

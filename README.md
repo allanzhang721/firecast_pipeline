@@ -77,7 +77,7 @@ models, run_metrics, ensemble_metrics = train_multiple_cnn_for_fire(
 print(ensemble_metrics)
 ```
 
-The ensemble is saved as `examples/my_cnn_ensemble.joblib`.
+The ensemble is saved as `my_cnn_ensemble.joblib`.
 
 ---
 
