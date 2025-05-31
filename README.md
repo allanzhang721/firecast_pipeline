@@ -50,17 +50,22 @@ pip install pandas numpy scikit-learn statsmodels xgboost torch optuna openpyxl 
 
 ## 🚀 Training
 
-Train any supported model on your dataset:
+Train any supported model directly from Python:
 
-```bash
-python -m regressorpipeline.train --model_name cnn --data_path examples/example_data_train.xlsx
-python -m regressorpipeline.train --model_name ols --data_path examples/example_data_train.xlsx
-python -m regressorpipeline.train --model_name lasso --data_path examples/example_data_train.xlsx
-python -m regressorpipeline.train --model_name mlp --data_path examples/example_data_train.xlsx
-python -m regressorpipeline.train --model_name xgboost --data_path examples/example_data_train.xlsx
+```python
+from regressorpipeline.train import train_fire_model, train_multiple_cnn_for_fire
+
+# Train a single model
+train_fire_model("cnn", "examples/example_data_train.xlsx")
+
+# Train multiple CNNs on separate time series and average metrics
+models, metrics_list, avg_metrics = train_multiple_cnn_for_fire([
+    "examples/example_data_train.xlsx",
+    "examples/another_time_series.xlsx",
+])
 ```
 
-Models are saved to the `examples/` folder as `best_<model_name>_model.joblib`.
+Trained models are saved to the `examples/` folder as `best_<model_name>_model.joblib`.
 
 
 ### Train a CNN Ensemble
@@ -82,33 +87,25 @@ The trained ensemble is saved as `examples/cnn_ensemble.joblib`.
 
 ## 🔍 Prediction
 
-Run inference on a test `.xlsx` file:
-
-```bash
-python -m regressorpipeline.predict \
-  --predict_path examples/example_data_test.xlsx \
-  --model_path examples/best_cnn_model.joblib
-```
-
-For an ensemble of CNN models, average predictions across multiple `.joblib`
-files:
+Use the prediction utilities from Python code:
 
 ```python
-from regressorpipeline.predict import predict_fire_risk_from_multiple_models
+from regressorpipeline.predict import (
+    predict_fire_risk_from_model,
+    predict_fire_risk_from_multiple_models,
+)
 
-preds = predict_fire_risk_from_multiple_models(
-    ["examples/cnn_ensemble.joblib"],
+# Predict with a single trained model
+preds = predict_fire_risk_from_model(
+    "examples/best_cnn_model.joblib",
     "examples/example_data_test.xlsx",
 )
-print(preds)
-```
-To save predictions to CSV:
 
-```bash
-python -m regressorpipeline.predict \
-  --predict_path examples/example_data_test.xlsx \
-  --model_path examples/best_cnn_model.joblib \
-  --output_path examples/predict_results.csv
+# Predict with multiple models and average the results
+pred_lists, avg_preds = predict_fire_risk_from_multiple_models(
+    ["examples/best_cnn_model.joblib", "examples/best_ols_model.joblib"],
+    ["examples/example_data_test.xlsx", "examples/example_data_test.xlsx"],
+)
 ```
 
 ---
@@ -117,16 +114,22 @@ python -m regressorpipeline.predict \
 
 Generate a 3D surface plot for CNN predictions over any two features:
 
-```bash
-python -m regressorpipeline.visualize \
-  --feat1 ThermalInertia \
-  --feat2 FuelLoadDensity \
-  --model_path examples/best_cnn_model.joblib \
-  --save_path examples/cnn_surface.html
+```python
+from regressorpipeline.visualize import plot_fire_risk_surface_matplotlib
+
+plot_fire_risk_surface_matplotlib(
+    model,
+    X_scaled_df,
+    scaler_X,
+    scaler_y,
+    "ThermalInertia",
+    "FuelLoadDensity",
+    "CNN Surface",
+    save_path="examples/cnn_surface.html",
+)
 ```
 
-> Output will be saved as an interactive HTML file.
-
+The plot is saved as an interactive HTML file.
 ---
 
 ## 📂 Folder Structure
