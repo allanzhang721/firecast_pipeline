@@ -98,7 +98,7 @@ Train a CNN model using Optuna for hyperparameter tuning.
 ## `train_multiple_cnn_for_fire`
 
 ```python
-train_multiple_cnn_for_fire(data_path, n_runs=5, save_path="examples/cnn_ensemble.joblib")
+train_multiple_cnn_for_fire(data_path, n_runs=5, save=True)
 ```
 
 Train a CNN ensemble by running `n_runs` trainings on the same dataset and averaging the predictions.
@@ -106,7 +106,7 @@ Train a CNN ensemble by running `n_runs` trainings on the same dataset and avera
 ### Parameters:
 - `data_path` (`str`) — Path to the Excel dataset.
 - `n_runs` (`int`, optional) — Number of training runs.
-- `save_path` (`str`, optional) — Where to save the ensemble joblib. Default is `examples/cnn_ensemble.joblib`.
+- `save` (`bool`, optional) — Whether to save the ensemble as examples/cnn_ensemble.joblib. Default is True.
 
 ### Returns:
 - `list` — Trained CNN models.

@@ -134,11 +134,30 @@ def train_optuna_cnn_for_fire(X_train, y_train, X_test, y_test):
     return best_model, metrics
 
 
-def train_multiple_cnn_for_fire(data_path, n_runs=5, save_path="examples/cnn_ensemble.joblib"):
+def train_multiple_cnn_for_fire(data_path, n_runs=5, save=True):
+    """
+    Train a CNN ensemble by training the same dataset multiple times.
+
+    Parameters
+    ----------
+    data_path : str
+        Path to an Excel file containing training data.
+    n_runs : int, optional
+        Number of independent training runs. Default is 5.
+    save : bool, optional
+        Whether to save the model ensemble to examples/cnn_ensemble.joblib
+
+    Returns
+    -------
+    list
+        Trained CNN models.
+    list of dict
+        Metrics for each individual CNN.
+    dict
+        Metrics for the averaged ensemble prediction.
+    """
     X, y = load_excel_data(data_path)
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.3, random_state=42
-    )
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
     X_tr_scaled, X_te_scaled, y_tr_scaled, y_te_scaled, scaler_X, scaler_y = log_scale_transform(
         X_train, X_test, y_train, y_test
     )
@@ -148,9 +167,7 @@ def train_multiple_cnn_for_fire(data_path, n_runs=5, save_path="examples/cnn_ens
     preds_list = []
 
     for _ in range(n_runs):
-        model, metrics = train_optuna_cnn_for_fire(
-            X_tr_scaled, y_tr_scaled, X_te_scaled, y_te_scaled
-        )
+        model, metrics = train_optuna_cnn_for_fire(X_tr_scaled, y_tr_scaled, X_te_scaled, y_te_scaled)
         models.append(model)
         metrics_list.append(metrics)
 
@@ -166,20 +183,20 @@ def train_multiple_cnn_for_fire(data_path, n_runs=5, save_path="examples/cnn_ens
         "MSE": mean_squared_error(y_te_scaled, ensemble_preds),
     }
 
-    if save_path:
-        os.makedirs(os.path.dirname(save_path), exist_ok=True)
-        joblib.dump(
-            {
-                "models": models,
-                "scaler_X": scaler_X,
-                "scaler_y": scaler_y,
-                "feature_names": X.columns.tolist(),
-            },
-            save_path,
-        )
+    if save:
+        os.makedirs("examples", exist_ok=True)
+        joblib.dump({
+            "models": models,
+            "scaler_X": scaler_X,
+            "scaler_y": scaler_y,
+            "feature_names": X.columns.tolist()
+        }, "examples/cnn_ensemble.joblib")
+
+    print("\n🔥 CNN Ensemble Evaluation:")
+    for k, v in ensemble_metrics.items():
+        print(f"{k}: {v:.4f}")
 
     return models, metrics_list, ensemble_metrics
-
 
 if __name__ == "__main__":
     import argparse

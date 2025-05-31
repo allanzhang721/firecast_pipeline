@@ -72,7 +72,7 @@ You can train the same dataset multiple times to build a more stable ensemble:
 from regressorpipeline.train import train_multiple_cnn_for_fire
 
 models, run_metrics, ensemble_metrics = train_multiple_cnn_for_fire(
-    "examples/example_data_train.xlsx", n_runs=3, save_path="examples/my_cnn_ensemble.joblib"
+    "examples/example_data_train.xlsx", n_runs=3, save=True
 )
 print(ensemble_metrics)
 ```

@@ -2,10 +2,10 @@ from setuptools import setup, find_packages
 
 setup(
     name="firecast_pipeline",
-    version="0.1.1",
+    version="0.1.3",
     description="Unified regression pipeline for fire risk prediction.",
     author="Allan Zhang",
-    author_email="your.email@example.com",
+    author_email="yaoyu.zhang@mail.utoronto.ca",
     packages=find_packages(),
     install_requires=[
         "pandas",
