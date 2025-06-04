@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="firecast_pipeline",
-    version="0.1.4",
+    version="0.1.5",
     description="Unified regression pipeline for fire risk prediction.",
     author="Allan Zhang",
     author_email="yaoyu.zhang@mail.utoronto.ca",

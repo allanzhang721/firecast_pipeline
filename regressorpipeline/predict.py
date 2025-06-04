@@ -5,13 +5,15 @@ import joblib
 import torch
 
 
+import statsmodels.api as sm
+
 def predict_fire_risk(model, scaler_X, scaler_y, input_path):
     """
     Predict fire risk from a single model and scaler set.
 
     Parameters
     ----------
-    model : trained model (sklearn or torch)
+    model : trained model (sklearn, statsmodels, or torch)
     scaler_X : fitted sklearn scaler
     scaler_y : fitted sklearn scaler
     input_path : str
@@ -25,10 +27,18 @@ def predict_fire_risk(model, scaler_X, scaler_y, input_path):
     X = np.log1p(df.select_dtypes(include=[np.number]))
     X_scaled = scaler_X.transform(X)
 
+    # Torch model
     if isinstance(model, torch.nn.Module):
         model.eval()
         with torch.no_grad():
             preds = model(torch.tensor(X_scaled, dtype=torch.float32).unsqueeze(1)).numpy()
+
+    # Statsmodels OLS model
+    elif hasattr(model, "model") and isinstance(model.model, sm.regression.linear_model.OLS):
+        X_scaled = sm.add_constant(X_scaled, has_constant="add")
+        preds = model.predict(X_scaled)
+
+    # scikit-learn model
     else:
         preds = model.predict(X_scaled)
 
