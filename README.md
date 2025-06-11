@@ -23,7 +23,7 @@ The pipeline is designed for `.xlsx` Excel datasets with flexible feature column
   - ✅ All columns except the **last** = input features
   - ✅ Last column = fire risk target (e.g., TTF)
   - ❌ Unnecessary columns must be **removed**, not just hidden
-
+  - !! MAKE SURE THE EXCEL FILE HAS **NUMBER FORMAT**. NO FORMULA!!
 ### ✅ Example
 
 | Thermal Inertia | HRRPUA | Ignition Temp | Time to Flashover |
